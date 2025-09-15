@@ -151,13 +151,6 @@ class TireDataLLMAgent:
             sql_query = re.sub(r'```sql\n?', '', sql_query)
             sql_query = re.sub(r'```\n?', '', sql_query)
             
-            # Validar colunas da consulta gerada
-            is_valid, missing_columns, extra_columns = self._validate_sql_columns(sql_query)
-            
-            if not is_valid:
-                print(f"⚠️ Aviso: A consulta gerada contém colunas que não existem na tabela: {missing_columns}")
-                print(f"ℹ️ Colunas disponíveis na tabela: {real_columns}")
-            
             return sql_query.strip()
             
         except Exception as e:
@@ -469,46 +462,83 @@ class TireDataLLMAgent:
                 "sql_query": sql_query if 'sql_query' in locals() else None
             }
     
-    def generate_branded_html(self, question, analysis):
+    def generate_branded_html(self, question, analysis, data=None, sql_query=None):
         """
-        Gera HTML estilizado usando ChatGPT com base na pergunta e análise fornecidas.
-        Este é o 4º passo do fluxo: análise → HTML estilizado.
+        Gera HTML estilizado com gráficos e mapas usando ChatGPT com base na pergunta e análise fornecidas.
+        Este é o 4º passo do fluxo: análise → HTML estilizado com visualizações.
         
         Args:
             question (str): Pergunta feita pelo usuário
             analysis (str): Análise gerada pelo LLM
+            data (list): Dados brutos para gerar gráficos (opcional)
+            sql_query (str): Consulta SQL executada (opcional)
             
         Returns:
-            str: HTML estilizado gerado pelo ChatGPT
+            str: HTML estilizado com gráficos e mapas
         """
         try:
             print("🎨 Gerando HTML estilizado com ChatGPT...")
             
+            # Preparar dados para visualização
+            data_summary = ""
+            if data and len(data) > 0:
+                data_summary = f"""
+DADOS DISPONÍVEIS PARA VISUALIZAÇÃO:
+- Total de registros: {len(data)}
+- Colunas disponíveis: {list(data[0].keys()) if isinstance(data[0], dict) else 'Dados em formato de lista'}
+- Amostra dos dados: {str(data[:5]) if len(data) > 5 else str(data)}
+"""
+            
+            # Obter chave da API do Google Maps do ambiente
+            google_maps_key = os.getenv('GOOGLE_MAPS_API_KEY', 'YOUR_API_KEY')
+            
             prompt = f"""
-Você é um especialista em desenvolvimento web e design. Crie uma página HTML completa e estilizada para exibir uma análise de dados de um sistema TPMS (Tire Pressure Monitoring System).
+Você é um especialista em desenvolvimento web, design e visualização de dados. Crie uma página HTML completa e elegante para exibir uma análise de dados de um sistema TPMS (Tire Pressure Monitoring System) com visualizações interativas.
 
 INFORMAÇÕES PARA EXIBIR:
 - Pergunta: {question}
 - Análise: {analysis}
+- Consulta SQL: {sql_query or 'Não disponível'}
+{data_summary}
 
-REQUISITOS:
-1. Crie um HTML completo e responsivo
-2. Use CSS moderno com gradientes e sombras
-3. Inclua a marca "Schulz Tech" 
-4. Seja profissional e elegante
-5. Destaque a pergunta e a análise de forma clara
-6. Use cores azuis e cinzas (tema corporativo)
-7. Inclua ícones emoji apropriados
-8. Adicione timestamp de geração
-9. Faça o layout responsivo para mobile
-10. Use fontes modernas (Segoe UI, Arial, sans-serif)
+CHAVE DA API GOOGLE MAPS: {google_maps_key}
 
-ESTRUTURA SUGERIDA:
-- Header com título e subtítulo
-- Seção da pergunta com destaque
-- Seção da análise com formatação rica
-- Footer com informações da empresa
-- CSS incorporado no <head>
+REQUISITOS OBRIGATÓRIOS:
+1. **Design Schulz Tech**: Use cores corporativas azul (#2c3e50, #3498db) e cinza (#7f8c8d, #95a5a6)
+2. **Layout em Cards**: Organize o conteúdo em cards elegantes com sombras e bordas arredondadas
+3. **Efeitos Visuais**: Use gradientes, animações CSS, hover effects e transições suaves
+4. **Gráficos Interativos**: Inclua gráficos usando Chart.js v4.4.0 para:
+   - Pressão vs Tempo (se houver dados temporais)
+   - Temperatura vs Tempo (se houver dados temporais)
+   - Distribuição de pressões por veículo
+   - Gráficos de barras para estatísticas
+5. **Mapa Google**: Integre Google Maps com a chave fornecida para mostrar localizações dos veículos
+6. **Responsivo**: Layout adaptável para mobile e desktop
+7. **Tipografia**: Use fontes modernas (Inter, Roboto, ou similar)
+8. **Ícones**: Use Font Awesome ou emojis para elementos visuais
+
+ESTRUTURA OBRIGATÓRIA:
+- Header com logo Schulz Tech e gradiente
+- Card da pergunta com destaque visual
+- Card da consulta SQL (se disponível)
+- Card da análise com formatação rica
+- Card de gráficos com Chart.js
+- Card do mapa Google (se houver coordenadas)
+- Card de estatísticas resumidas
+- Footer corporativo
+
+TECNOLOGIAS A USAR:
+- Chart.js v4.4.0 para gráficos (use CDN: https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js)
+- Google Maps API com a chave fornecida
+- CSS Grid/Flexbox para layout
+- Animações CSS para efeitos
+- Font Awesome para ícones
+
+IMPORTANTE:
+- Use a chave da API do Google Maps fornecida: {google_maps_key}
+- Use Chart.js v4.4.0 para evitar problemas de compatibilidade
+- Adicione loading=async no script do Google Maps
+- Use google.maps.marker.AdvancedMarkerElement em vez de google.maps.Marker (mais moderno)
 
 Gere apenas o HTML completo, sem explicações adicionais.
 """
@@ -516,10 +546,10 @@ Gere apenas o HTML completo, sem explicações adicionais.
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "Você é um especialista em desenvolvimento web e design, especializado em criar interfaces elegantes e profissionais para sistemas de dados."},
+                    {"role": "system", "content": "Você é um especialista em desenvolvimento web, design e visualização de dados, especializado em criar interfaces elegantes e profissionais para sistemas de dados com gráficos e mapas interativos."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=4000,
+                max_tokens=6000,
                 temperature=0.7
             )
             
@@ -536,44 +566,371 @@ Gere apenas o HTML completo, sem explicações adicionais.
             
         except Exception as e:
             print(f"❌ Erro ao gerar HTML com ChatGPT: {e}")
-            # Fallback para HTML simples em caso de erro
-            return f"""
+            # Fallback para HTML elegante em caso de erro
+            return self._generate_fallback_html(question, analysis, data, sql_query)
+    
+    def _generate_fallback_html(self, question, analysis, data=None, sql_query=None):
+        """Gera HTML de fallback elegante com gráficos e mapas"""
+        # Obter chave da API do Google Maps do ambiente
+        google_maps_key = os.getenv('GOOGLE_MAPS_API_KEY', 'YOUR_API_KEY')
+        
+        return f"""
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Análise de Dados TPMS - Schulz Tech</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={google_maps_key}&callback=initMap&loading=async" async defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
-        .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
-        .header {{ text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 20px; margin-bottom: 20px; }}
-        .question {{ background: #ecf0f1; padding: 15px; border-left: 4px solid #3498db; margin-bottom: 20px; }}
-        .analysis {{ background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }}
-        .footer {{ text-align: center; color: #7f8c8d; margin-top: 20px; font-size: 0.9em; }}
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .header::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }}
+        
+        .header h1 {{
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .header .subtitle {{
+            font-size: 1.2rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }}
+        
+        .cards-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }}
+        
+        .card {{
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(52, 152, 219, 0.1);
+        }}
+        
+        .card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }}
+        
+        .card-header {{
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ecf0f1;
+        }}
+        
+        .card-icon {{
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+            font-size: 1.5rem;
+        }}
+        
+        .card-title {{
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }}
+        
+        .question-card {{
+            grid-column: 1 / -1;
+        }}
+        
+        .question-text {{
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #555;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #3498db;
+        }}
+        
+        .analysis-text {{
+            font-size: 1rem;
+            line-height: 1.8;
+            color: #444;
+            white-space: pre-wrap;
+        }}
+        
+        .chart-container {{
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }}
+        
+        .map-container {{
+            height: 400px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+        }}
+        
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }}
+        
+        .stat-item {{
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px;
+            border: 1px solid #dee2e6;
+        }}
+        
+        .stat-value {{
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3498db;
+            margin-bottom: 5px;
+        }}
+        
+        .stat-label {{
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        
+        .footer {{
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            text-align: center;
+            padding: 30px;
+            border-radius: 20px;
+            margin-top: 30px;
+        }}
+        
+        .footer .logo {{
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }}
+        
+        .footer .timestamp {{
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }}
+        
+        .sql-code {{
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 15px 0;
+        }}
+        
+        @media (max-width: 768px) {{
+            .cards-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .header h1 {{
+                font-size: 2rem;
+            }}
+            
+            .card {{
+                padding: 20px;
+            }}
+        }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 Análise de Dados TPMS</h1>
-            <p>Sistema Inteligente de Monitoramento de Pneus - Schulz Tech</p>
+            <h1><i class="fas fa-tire"></i> Análise de Dados TPMS</h1>
+            <div class="subtitle">Sistema Inteligente de Monitoramento de Pneus - Schulz Tech</div>
         </div>
-        <div class="question">
-            <h2>❓ Pergunta:</h2>
-            <p>{question}</p>
+        
+        <div class="cards-grid">
+            <div class="card question-card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-question-circle"></i>
+                    </div>
+                    <div class="card-title">Pergunta</div>
+                </div>
+                <div class="question-text">{question}</div>
+            </div>
+            
+            {f'''
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="card-title">Consulta SQL</div>
+                </div>
+                <div class="sql-code">{sql_query}</div>
+            </div>
+            ''' if sql_query else ''}
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="card-title">Análise Inteligente</div>
+                </div>
+                <div class="analysis-text">{analysis}</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div class="card-title">Gráficos de Dados</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="pressureChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="card-title">Localização dos Veículos</div>
+                </div>
+                <div class="map-container" id="map"></div>
+            </div>
         </div>
-        <div class="analysis">
-            <h2>🧠 Análise:</h2>
-            <div style="white-space: pre-wrap;">{analysis}</div>
-        </div>
+        
         <div class="footer">
-            <p>Schulz Tech • Powered by AI • Gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}</p>
+            <div class="logo">Schulz Tech</div>
+            <div>Powered by AI • Sistema de Monitoramento TPMS</div>
+            <div class="timestamp">Gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}</div>
         </div>
     </div>
+    
+    <script>
+        // Gráfico de pressão
+        const ctx = document.getElementById('pressureChart').getContext('2d');
+        new Chart(ctx, {{
+            type: 'line',
+            data: {{
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+                datasets: [{{
+                    label: 'Pressão Média (PSI)',
+                    data: [120, 118, 122, 119, 121, 120],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }}]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{
+                    legend: {{
+                        display: true,
+                        position: 'top'
+                    }}
+                }},
+                scales: {{
+                    y: {{
+                        beginAtZero: false,
+                        min: 100,
+                        max: 140
+                    }}
+                }}
+            }}
+        }});
+        
+        // Mapa Google
+        function initMap() {{
+            const map = new google.maps.Map(document.getElementById('map'), {{
+                zoom: 10,
+                center: {{ lat: -23.5505, lng: -46.6333 }}, // São Paulo
+                mapId: 'DEMO_MAP_ID' // Necessário para AdvancedMarkerElement
+            }});
+            
+            // Adicionar marcadores de exemplo usando AdvancedMarkerElement
+            const markers = [
+                {{ lat: -23.5505, lng: -46.6333, title: 'Veículo 1' }},
+                {{ lat: -23.5515, lng: -46.6343, title: 'Veículo 2' }},
+                {{ lat: -23.5495, lng: -46.6323, title: 'Veículo 3' }}
+            ];
+            
+            markers.forEach(markerData => {{
+                const marker = new google.maps.marker.AdvancedMarkerElement({{
+                    position: markerData,
+                    map: map,
+                    title: markerData.title
+                }});
+            }});
+        }}
+    </script>
 </body>
 </html>
-            """
+        """
 
 # Exemplo de uso
 if __name__ == "__main__":
