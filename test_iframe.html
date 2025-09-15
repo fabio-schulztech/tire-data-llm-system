@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Iframe Sandboxed</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #0B0F14;
+            color: #E5EEFC;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #22304A;
+            border-radius: 10px;
+            background: #0F1929;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #22304A;
+            border-radius: 8px;
+            background: #0B0F14;
+        }
+        .test-button {
+            background: #13B9FF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .test-button:hover {
+            background: #1ED0FF;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background: #111827;
+            border: 1px solid #22304A;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Teste de Iframe Sandboxed</h1>
+        <p>Este teste verifica se o HTML gerado funciona corretamente em iframes sandboxed.</p>
+        
+        <div class="status" id="status">
+            <strong>Status:</strong> Aguardando teste...
+        </div>
+        
+        <button class="test-button" onclick="testGenerateHTML()">Gerar HTML de Teste</button>
+        <button class="test-button" onclick="clearIframe()">Limpar Iframe</button>
+        
+        <div style="margin-top: 20px;">
+            <h3>Iframe de Teste:</h3>
+            <iframe id="testIframe" sandbox="allow-scripts" title="Teste HTML Gerado"></iframe>
+        </div>
+    </div>
+
+    <script>
+        async function testGenerateHTML() {
+            const status = document.getElementById('status');
+            const iframe = document.getElementById('testIframe');
+            
+            try {
+                status.innerHTML = '<strong>Status:</strong> Gerando HTML...';
+                
+                const response = await fetch('/api/generate-html', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: 'Teste de iframe sandboxed',
+                        analysis: 'Este é um teste para verificar se o HTML gerado funciona corretamente em iframes sandboxed sem erros de localStorage ou sessionStorage.'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.html) {
+                    status.innerHTML = '<strong>Status:</strong> ✅ HTML gerado com sucesso! Carregando no iframe...';
+                    
+                    // Carregar HTML no iframe
+                    iframe.srcdoc = data.html;
+                    
+                    // Verificar se há erros no iframe
+                    iframe.onload = function() {
+                        try {
+                            // Tentar acessar o conteúdo do iframe para verificar se carregou
+                            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                            if (iframeDoc) {
+                                status.innerHTML = '<strong>Status:</strong> ✅ HTML carregado com sucesso no iframe!';
+                            }
+                        } catch (e) {
+                            status.innerHTML = '<strong>Status:</strong> ⚠️ HTML carregado, mas iframe é sandboxed (normal)';
+                        }
+                    };
+                    
+                    iframe.onerror = function() {
+                        status.innerHTML = '<strong>Status:</strong> ❌ Erro ao carregar HTML no iframe';
+                    };
+                    
+                } else {
+                    status.innerHTML = '<strong>Status:</strong> ❌ Erro na resposta da API: ' + (data.error || 'Resposta inválida');
+                }
+                
+            } catch (error) {
+                status.innerHTML = '<strong>Status:</strong> ❌ Erro: ' + error.message;
+                console.error('Erro no teste:', error);
+            }
+        }
+        
+        function clearIframe() {
+            const iframe = document.getElementById('testIframe');
+            const status = document.getElementById('status');
+            
+            iframe.srcdoc = '';
+            status.innerHTML = '<strong>Status:</strong> Iframe limpo';
+        }
+        
+        // Verificar se a API está disponível
+        window.addEventListener('load', async function() {
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    document.getElementById('status').innerHTML = '<strong>Status:</strong> ✅ API disponível - Pronto para teste';
+                } else {
+                    document.getElementById('status').innerHTML = '<strong>Status:</strong> ❌ API não disponível';
+                }
+            } catch (error) {
+                document.getElementById('status').innerHTML = '<strong>Status:</strong> ❌ Erro ao conectar com API';
+            }
+        });
+    </script>
+</body>
+</html>

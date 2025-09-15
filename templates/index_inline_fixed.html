@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agente Schulz Tech | Análise de Pneus  </title>
+    <meta name="description" content="Sistema de análise inteligente de dados TPMS e GPS da Schulz Tech">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://api.schulztech.com.br/">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://api.schulztech.com.br wss://api.schulztech.com.br https://maps.googleapis.com https://cdn.jsdelivr.net;">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <!-- Leaflet CSS for maps -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" rel="stylesheet">
+    
+    <!-- CSS INLINE - Solução para problema de arquivos estáticos -->
+    <style>
+/* Reset e Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #121B44;
+    min-height: 100vh;
+    color: #F1F5F9;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* Header - Schulz Tech Style */
+.header {
+    background: rgba(11, 79, 124, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: 24px 32px;
+    margin-bottom: 32px;
+    box-shadow: 0 10px 40px rgba(11, 79, 124, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.logo i {
+    font-size: 48px;
+    color: #60A5FA;
+}
+
+.logo h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #F1F5F9;
+    margin: 0;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #94A3B8;
+    font-weight: 500;
+}
+
+.system-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 25px;
+    backdrop-filter: blur(10px);
+}
+
+.status-indicator {
+    font-size: 12px;
+}
+
+.status-indicator.online {
+    color: #10B981;
+}
+
+.status-indicator.offline {
+    color: #EF4444;
+}
+
+/* Glass Effect */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Query Section */
+.query-section {
+    padding: 32px;
+    margin-bottom: 32px;
+}
+
+.query-section h2 {
+    font-size: 24px;
+    margin-bottom: 24px;
+    color: #60A5FA;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.query-form {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.query-form input {
+    flex: 1;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: #F1F5F9;
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+}
+
+.query-form input::placeholder {
+    color: #94A3B8;
+}
+
+.query-form input:focus {
+    outline: none;
+    border-color: #60A5FA;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+.query-form button {
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.query-form button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+}
+
+.query-form button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Examples */
+.examples {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.example-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: #94A3B8;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.example-btn:hover {
+    background: rgba(96, 165, 250, 0.2);
+    color: #60A5FA;
+    border-color: #60A5FA;
+}
+
+/* Features Grid */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.feature-card {
+    padding: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.feature-card h3 {
+    font-size: 20px;
+    margin-bottom: 12px;
+    color: #60A5FA;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.feature-card p {
+    color: #94A3B8;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.feature-btn {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.feature-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Results Section */
+.results-section {
+    padding: 32px;
+    margin-bottom: 32px;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.results-header h2 {
+    font-size: 24px;
+    color: #60A5FA;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#clearResults {
+    padding: 8px 16px;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid #EF4444;
+    border-radius: 8px;
+    color: #EF4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+}
+
+#clearResults:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+.result-item {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.result-item h3 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    color: #60A5FA;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.result-item pre {
+    background: #1E293B;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+.result-item code {
+    color: #94A3B8;
+    font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+/* Table */
+.table-container {
+    overflow-x: auto;
+    margin-top: 16px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+th {
+    background: rgba(96, 165, 250, 0.1);
+    color: #60A5FA;
+    font-weight: 600;
+}
+
+td {
+    color: #E2E8F0;
+}
+
+tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Markdown / Canvas-like analysis area */
+#analysisContent {
+    margin-top: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* subtle canvas grid effect */
+#analysisContent::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px;
+    pointer-events: none;
+}
+
+#analysisContent .markdown-body {
+    position: relative; /* above grid overlay */
+    z-index: 1;
+}
+
+/* Markdown typography */
+#analysisContent .markdown-body h1,
+#analysisContent .markdown-body h2,
+#analysisContent .markdown-body h3 {
+    color: #E5F0FF;
+    margin: 12px 0 8px;
+}
+#analysisContent .markdown-body h1 { font-size: 24px; }
+#analysisContent .markdown-body h2 { font-size: 20px; }
+#analysisContent .markdown-body h3 { font-size: 18px; }
+
+#analysisContent .markdown-body p {
+    margin: 8px 0;
+    color: #E2E8F0;
+    white-space: pre-wrap; /* preserva quebras de linha simples */
+}
+
+#analysisContent .markdown-body strong { color: #FFFFFF; }
+#analysisContent .markdown-body em { color: #E2E8F0; opacity: 0.9; }
+
+#analysisContent .markdown-body ul,
+#analysisContent .markdown-body ol {
+    margin: 8px 0 8px 20px;
+}
+
+#analysisContent .markdown-body li { margin: 4px 0; }
+
+#analysisContent .markdown-body a {
+    color: #60A5FA;
+    text-decoration: underline;
+}
+
+#analysisContent .markdown-body blockquote {
+    border-left: 3px solid #60A5FA;
+    padding-left: 12px;
+    color: #C7D2FE;
+    margin: 8px 0;
+}
+
+#analysisContent .markdown-body code {
+    background: rgba(30,41,59,0.8);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+#analysisContent .markdown-body pre code {
+    display: block;
+    padding: 12px;
+}
+
+#analysisContent .markdown-body hr {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin: 12px 0;
+}
+
+#analysisContent .markdown-body img {
+    max-width: 100%;
+    border-radius: 8px;
+    display: block;
+    margin: 8px 0;
+}
+
+/* Chart.js canvas and map container styling */
+.chart-container {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.map-container {
+    height: 360px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    margin: 10px 0;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(18, 27, 68, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
+.loading-spinner {
+    text-align: center;
+    color: #60A5FA;
+    background: rgba(15, 25, 41, 0.95);
+    padding: 40px;
+    border-radius: 16px;
+    border: 1px solid rgba(34, 48, 74, 0.5);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    min-width: 400px;
+    max-width: 500px;
+}
+
+.loading-header {
+    margin-bottom: 30px;
+}
+
+.loading-header i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #13B9FF;
+}
+
+.loading-header h3 {
+    font-size: 24px;
+    color: #E5EEFC;
+    margin: 0;
+    font-weight: 600;
+}
+
+.loading-steps {
+    margin-bottom: 30px;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+    opacity: 0.5;
+}
+
+.step.active {
+    background: rgba(19, 185, 255, 0.1);
+    border-color: rgba(19, 185, 255, 0.3);
+    opacity: 1;
+    transform: translateX(4px);
+}
+
+.step.completed {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    opacity: 1;
+}
+
+.step i {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+.step.active i {
+    color: #13B9FF;
+    animation: pulse 1.5s infinite;
+}
+
+.step.completed i {
+    color: #22C55E;
+}
+
+.step span {
+    font-size: 14px;
+    color: #9FB2CC;
+    font-weight: 500;
+}
+
+.step.active span {
+    color: #E5EEFC;
+}
+
+.loading-progress {
+    margin-top: 20px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #13B9FF, #1ED0FF);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+
+.progress-text {
+    font-size: 14px;
+    color: #9FB2CC;
+    font-weight: 600;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Error Message */
+.error-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(220, 38, 38, 0.9);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+    z-index: 1000;
+    max-width: 400px;
+    backdrop-filter: blur(10px);
+}
+
+/* Responsive Design Aprimorado */
+@media (max-width: 1400px) {
+    .container {
+        max-width: 1200px;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 1200px) {
+    .container {
+        max-width: 1000px;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .header-content h1 {
+        font-size: 2.5rem;
+    }
+    
+    .header-content p {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+        max-width: 100%;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+    }
+    
+    .header-content h1 {
+        font-size: 2rem;
+    }
+    
+    .header-content p {
+        font-size: 1rem;
+    }
+    
+    .query-form {
+        flex-direction: column;
+    }
+    
+    .query-input {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 12px 16px;
+    }
+    
+    .query-button {
+        padding: 12px 24px;
+        font-size: 1rem;
+    }
+    
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .feature-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .examples {
+        justify-content: center;
+    }
+    
+    .results-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: stretch;
+    }
+    
+    .data-table {
+        font-size: 0.875rem;
+        overflow-x: auto;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.5rem;
+        white-space: nowrap;
+    }
+    
+    .loading-spinner {
+        min-width: 300px;
+        max-width: 90vw;
+        padding: 20px;
+    }
+    
+    .loading-steps {
+        margin-bottom: 20px;
+    }
+    
+    .step {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .logo h1 {
+        font-size: 24px;
+    }
+    
+    .logo i {
+        font-size: 36px;
+    }
+    
+    .header-content h1 {
+        font-size: 1.75rem;
+    }
+    
+    .header-content p {
+        font-size: 0.9rem;
+    }
+    
+    .query-section, .results-section {
+        padding: 15px;
+    }
+    
+    .feature-card {
+        padding: 15px;
+    }
+    
+    .feature-card h3 {
+        font-size: 1.1rem;
+    }
+    
+    .feature-card p {
+        font-size: 0.9rem;
+    }
+    
+    .query-input {
+        padding: 10px 14px;
+        font-size: 16px;
+    }
+    
+    .query-button {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    
+    .data-table {
+        font-size: 0.8rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.4rem;
+    }
+    
+    .loading-spinner {
+        min-width: 280px;
+        padding: 15px;
+    }
+    
+    .loading-header h3 {
+        font-size: 20px;
+    }
+    
+    .step {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+/* Breakpoints específicos para diferentes tamanhos de tela */
+@media (min-width: 2560px) {
+    .container {
+        max-width: 2400px;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+    
+    .header-content h1 {
+        font-size: 4rem;
+    }
+    
+    .header-content p {
+        font-size: 1.5rem;
+    }
+}
+
+@media (min-width: 1920px) and (max-width: 2559px) {
+    .container {
+        max-width: 1800px;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+@media (min-width: 1400px) and (max-width: 1919px) {
+    .container {
+        max-width: 1400px;
+    }
+    
+    .features-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="map1" style="width: 100%; height: 500px; border-radius: 12px; overflow: hidden;"></div>
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-tire"></i>
+                    <h1>Agente LLM - Análise de Pneus</h1>
+                    <span class="subtitle">Schulz Tech | Sistema TPMS</span>
+                </div>
+                <div class="system-status" id="systemStatus">
+                    <i class="fas fa-circle status-indicator"></i>
+                    <span id="statusText">Verificando status...</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Query Section -->
+            <section class="query-section glass-effect">
+                <h2><i class="fas fa-question-circle"></i> Faça sua Pergunta</h2>
+                <div class="query-form">
+                    <input type="text" id="queryInput" placeholder="Ex: Quantos veículos únicos temos no sistema?" autocomplete="off">
+                    <button id="submitQuery"><i class="fas fa-paper-plane"></i> Consultar</button>
+                </div>
+                <div class="examples">
+                    <button class="example-btn" data-query="Quantos veículos únicos temos no sistema?"><i class="fas fa-car"></i> Veículos únicos</button>
+                    <button class="example-btn" data-query="Qual a temperatura mais alta registrada em um pneu?"><i class="fas fa-thermometer-half"></i> Temperatura máxima</button>
+                    <button class="example-btn" data-query="Quais pneus estão com pressão abaixo do ideal?"><i class="fas fa-tire-pressure-gauge"></i> Pressão baixa</button>
+                    <button class="example-btn" data-query="Top 10 veículos com mais medições?"><i class="fas fa-chart-bar"></i> Top 10 veículos</button>
+                </div>
+            </section>
+
+            <!-- Feature Cards -->
+            <section class="features-grid">
+                <div class="feature-card glass-effect" id="statsCard">
+                    <h3><i class="fas fa-chart-line"></i> Estatísticas Gerais</h3>
+                    <p>Visão geral dos dados de veículos e pneus.</p>
+                    <button class="feature-btn" data-action="stats"><i class="fas fa-eye"></i> Ver Estatísticas</button>
+                </div>
+                <div class="feature-card glass-effect" id="healthScoreCard">
+                    <h3><i class="fas fa-heartbeat"></i> Score de Saúde</h3>
+                    <p>Avalie a saúde da frota e identifique problemas.</p>
+                    <button class="feature-btn" data-action="health-score"><i class="fas fa-heart"></i> Ver Score</button>
+                </div>
+                <div class="feature-card glass-effect" id="tireAnalysisCard">
+                    <h3><i class="fas fa-road"></i> Análise de Pneus</h3>
+                    <p>Detalhes por posição, tipo e condições de uso.</p>
+                    <button class="feature-btn" data-action="tire-analysis"><i class="fas fa-tire"></i> Analisar Pneus</button>
+                </div>
+                <div class="feature-card glass-effect" id="alertsCard">
+                    <h3><i class="fas fa-bell"></i> Alertas e Eventos</h3>
+                    <p>Monitore eventos críticos e anomalias.</p>
+                    <button class="feature-btn" data-action="alerts"><i class="fas fa-exclamation-triangle"></i> Ver Alertas</button>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section glass-effect" id="resultsSection" style="display: none;">
+                <div class="results-header">
+                    <h2><i class="fas fa-flask"></i> Resultados da Análise</h2>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button id="clearResults"><i class="fas fa-times"></i> Limpar</button>
+                    </div>
+                </div>
+                <div class="results-content">
+                    <!-- Query Result -->
+                    <div class="result-item" id="queryResult" style="display: none;">
+                        <h3><i class="fas fa-question-circle"></i> Pergunta: <span id="displayedQuery"></span></h3>
+                        <div id="sqlBlock" style="display:none;">
+                            <p><strong>SQL Gerado:</strong></p>
+                            <pre><code class="language-sql" id="sqlCode"></code></pre>
+                        </div>
+                        <p><strong>Análise do LLM:</strong></p>
+                        <div id="analysisContent"></div>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="result-item" id="dataTable" style="display: none;">
+                        <h3><i class="fas fa-table"></i> Dados <span id="recordCount"></span></h3>
+                        <div class="table-container">
+                            <table id="resultsTable">
+                                <thead id="tableHead"></thead>
+                                <tbody id="tableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Página HTML Gerada (embutida) -->
+                    <div class="result-item" id="brandedHtmlBlock" style="display: none;">
+                        <h3 style="display:flex; align-items:center; gap:10px; justify-content:space-between;">
+                            <span><i class="fas fa-code"></i> Página HTML Gerada</span>
+                            <button id="downloadHtmlBtn" class="feature-btn" data-action="download" style="margin-left:auto;">
+                                <i class="fas fa-download"></i> Baixar HTML
+                            </button>
+                        </h3>
+                        <div class="table-container" style="height: 600px; padding:0;">
+                            <iframe id="brandedHtmlFrame" title="Página Schulz Tech"
+                                    style="width:100%; height:100%; border:1px solid #22304A; border-radius: 10px; background: #0B0F14;"
+                                    sandbox="allow-scripts"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner">
+                <div class="loading-header">
+                <i class="fas fa-cog fa-spin"></i>
+                    <h3>Processando Consulta</h3>
+            </div>
+                <div class="loading-steps">
+                    <div class="step" id="step1">
+                        <i class="fas fa-brain"></i>
+                        <span>Analisando pergunta com IA...</span>
+                    </div>
+                    <div class="step" id="step2">
+                        <i class="fas fa-database"></i>
+                        <span>Gerando consulta SQL...</span>
+                    </div>
+                    <div class="step" id="step3">
+                        <i class="fas fa-search"></i>
+                        <span>Executando consulta no banco...</span>
+                    </div>
+                    <div class="step" id="step4">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Processando dados...</span>
+                    </div>
+                    <div class="step" id="step5">
+                        <i class="fas fa-file-code"></i>
+                        <span>Gerando relatório HTML...</span>
+                    </div>
+                    <div class="step" id="step6">
+                        <i class="fas fa-map"></i>
+                        <span>Configurando Google Maps...</span>
+                    </div>
+                    <div class="step" id="step7">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Criando gráficos interativos...</span>
+                    </div>
+                    <div class="step" id="step8">
+                        <i class="fas fa-palette"></i>
+                        <span>Aplicando design elegante...</span>
+                    </div>
+                    <div class="step" id="step9">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Otimizando responsividade...</span>
+                    </div>
+                    <div class="step" id="step10">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Finalizando relatório...</span>
+                    </div>
+                </div>
+                <div class="loading-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts - Implementação nativa sem dependências externas -->
+    
+    <!-- JavaScript INLINE - Corrigido para usar API base correta -->
+    <script>
+/**
+ * Agente LLM - Interface Web
+ * Schulz Tech - Sistema de Monitoramento TPMS
+ * Versão inline com API base corrigida
+ */
+
+// Configuração da API - detecta automaticamente o ambiente
+const API_BASE = window.location.origin;
+
+let isLoading = false;
+let currentChart = null;
+
+// Elementos DOM
+let elements = {};
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Agente LLM Interface iniciada');
+    console.log('🌐 API Base:', API_BASE);
+    
+    initializeElements();
+    setupEventListeners();
+    checkSystemStatus();
+    setLoading(false);
+    initGoogleMap();
+});
+
+function initializeElements() {
+    elements = {
+        queryInput: document.getElementById('queryInput'),
+        submitQuery: document.getElementById('submitQuery'),
+        resultsSection: document.getElementById('resultsSection'),
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        systemStatus: document.getElementById('systemStatus'),
+        statusText: document.getElementById('statusText'),
+        clearResults: document.getElementById('clearResults'),
+        displayedQuery: document.getElementById('displayedQuery'),
+        sqlCode: document.getElementById('sqlCode'),
+        analysisContent: document.getElementById('analysisContent'),
+        resultsTable: document.getElementById('resultsTable'),
+        tableHead: document.getElementById('tableHead'),
+        tableBody: document.getElementById('tableBody'),
+        recordCount: document.getElementById('recordCount'),
+        queryResult: document.getElementById('queryResult'),
+        dataTable: document.getElementById('dataTable')
+    };
+    
+    // Focar no input de consulta
+    if (elements.queryInput) {
+        elements.queryInput.focus();
+    }
+    
+    // Verificar status do sistema periodicamente
+    setInterval(checkSystemStatus, 30000);
+}
+
+function setupEventListeners() {
+    // Submit da consulta
+    if (elements.submitQuery) {
+        elements.submitQuery.addEventListener('click', handleQuery);
+    }
+    
+    // Enter no input
+    if (elements.queryInput) {
+        elements.queryInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !isLoading) {
+                handleQuery();
+            }
+        });
+    }
+    
+    // Limpar resultados
+    if (elements.clearResults) {
+        elements.clearResults.addEventListener('click', clearResults);
+    }
+    
+    // Botões de exemplo
+    document.querySelectorAll('.example-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const query = this.getAttribute('data-query');
+            if (elements.queryInput) {
+                elements.queryInput.value = query;
+                handleQuery();
+            }
+        });
+    });
+    
+    // Botões de funcionalidades
+    document.querySelectorAll('.feature-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const action = this.getAttribute('data-action');
+            if (action && action !== 'null') {
+                if (action === 'download') {
+                    // Tratar download do HTML
+                    handleDownloadHtml();
+                } else {
+            handleFeatureAction(action);
+                }
+            } else {
+                console.warn('Ação inválida:', action);
+                showError('Ação inválida. Tente novamente.');
+            }
+        });
+    });
+}
+
+async function checkSystemStatus() {
+    try {
+        // Tentar múltiplos endpoints de health check
+        const healthEndpoints = ['/health'];
+        let healthResponse = null;
+        
+        for (const endpoint of healthEndpoints) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    healthResponse = await response.json();
+                    break;
+                }
+            } catch (e) {
+                console.log(`Tentativa de health check em ${endpoint} falhou:`, e.message);
+            }
+        }
+        
+        if (healthResponse) {
+            updateSystemStatus('online', 'Sistema Online');
+            console.log('✅ Sistema online:', healthResponse);
+        } else {
+            throw new Error('Nenhum endpoint de health check respondeu');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao verificar status:', error);
+        updateSystemStatus('offline', 'Sistema Offline');
+    }
+}
+
+function updateSystemStatus(status, text) {
+    if (elements.systemStatus && elements.statusText) {
+        const indicator = elements.systemStatus.querySelector('.status-indicator');
+        if (indicator) {
+            indicator.className = `fas fa-circle status-indicator ${status}`;
+        }
+        elements.statusText.textContent = text;
+    }
+}
+
+function setLoading(loading) {
+    isLoading = loading;
+    
+    if (elements.loadingOverlay) {
+        elements.loadingOverlay.style.display = loading ? 'flex' : 'none';
+    }
+    
+    if (elements.submitQuery) {
+        elements.submitQuery.disabled = loading;
+        elements.submitQuery.innerHTML = loading 
+            ? '<i class="fas fa-spinner fa-spin"></i> Processando...'
+            : '<i class="fas fa-paper-plane"></i> Consultar';
+    }
+    
+    if (loading) {
+        resetLoadingSteps();
+    }
+}
+
+function resetLoadingSteps() {
+    // Reset all steps
+    for (let i = 1; i <= 10; i++) {
+        const step = document.getElementById(`step${i}`);
+        if (step) {
+            step.classList.remove('active', 'completed');
+        }
+    }
+    
+    // Reset progress
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    if (progressFill) progressFill.style.width = '0%';
+    if (progressText) progressText.textContent = '0%';
+}
+
+function updateLoadingStep(stepNumber, status = 'active') {
+    const step = document.getElementById(`step${stepNumber}`);
+    if (step) {
+        step.classList.remove('active', 'completed');
+        if (status === 'active') {
+            step.classList.add('active');
+        } else if (status === 'completed') {
+            step.classList.add('completed');
+        }
+    }
+    
+    // Update progress
+    const progress = (stepNumber / 10) * 100;
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+    if (progressText) {
+        progressText.textContent = `${Math.round(progress)}%`;
+    }
+}
+
+async function handleQuery() {
+    if (isLoading || !elements.queryInput) return;
+    
+    const query = elements.queryInput.value.trim();
+    if (!query) {
+        showError('Por favor, digite uma consulta.');
+        return;
+    }
+    
+    setLoading(true);
+    clearResults();
+    
+    try {
+        // Step 1: Analisando pergunta com IA
+        updateLoadingStep(1, 'active');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        updateLoadingStep(1, 'completed');
+        
+        // Step 2: Gerando consulta SQL
+        updateLoadingStep(2, 'active');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        updateLoadingStep(2, 'completed');
+        
+        // Step 3: Executando consulta no banco
+        updateLoadingStep(3, 'active');
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Tentar múltiplos endpoints de API
+        const apiEndpoints = ['/api/query', '/api/query'];
+        let response = null;
+        
+        for (const endpoint of apiEndpoints) {
+            try {
+                response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                if (response.ok) {
+                    break;
+                }
+            } catch (e) {
+                console.log(`Tentativa de API em ${endpoint} falhou:`, e.message);
+            }
+        }
+        
+        if (!response || !response.ok) {
+            throw new Error(`HTTP ${response?.status || 'N/A'}: ${response?.statusText || 'Nenhum endpoint de API respondeu'}`);
+        }
+        
+        updateLoadingStep(3, 'completed');
+        
+        // Step 4: Processando dados
+        updateLoadingStep(4, 'active');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const data = await response.json();
+        updateLoadingStep(4, 'completed');
+        
+        // Step 5: Gerando relatório HTML
+        updateLoadingStep(5, 'active');
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        if (data.success) {
+            // Step 6: Configurando Google Maps
+            updateLoadingStep(6, 'active');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            updateLoadingStep(6, 'completed');
+            
+            // Step 7: Criando gráficos interativos
+            updateLoadingStep(7, 'active');
+            await new Promise(resolve => setTimeout(resolve, 300));
+            updateLoadingStep(7, 'completed');
+            
+            // Step 8: Aplicando design elegante
+            updateLoadingStep(8, 'active');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            updateLoadingStep(8, 'completed');
+            
+            // Step 9: Otimizando responsividade
+            updateLoadingStep(9, 'active');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            updateLoadingStep(9, 'completed');
+            
+            // Step 10: Finalizando relatório
+            updateLoadingStep(10, 'active');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            displayQueryResults(data);
+            updateLoadingStep(10, 'completed');
+        } else {
+            // Verificar se é erro de dados ou SQL
+            if (data.error && (data.error.includes('sem dados') || data.error.includes('nenhum resultado'))) {
+                showError('⚠️ Consulta executada com sucesso, mas não retornou dados. Tente uma pergunta diferente ou verifique os critérios de busca.');
+            } else if (data.error && data.error.includes('SQL')) {
+                showError('❌ Erro na consulta SQL: ' + data.error);
+            } else {
+                showError('❌ Erro na consulta: ' + (data.error || 'Erro desconhecido'));
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro na consulta:', error);
+        showError(`Erro ao processar consulta: ${error.message}`);
+    } finally {
+        // Aguardar um pouco antes de esconder o loading
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setLoading(false);
+    }
+}
+
+function displayQueryResults(data) {
+    if (!elements.resultsSection) return;
+    
+    // Mostrar seção de resultados
+    elements.resultsSection.style.display = 'block';
+    
+    // Exibir pergunta
+    if (elements.displayedQuery) {
+        elements.displayedQuery.textContent = data.query;
+    }
+    window.lastQuery = data.query || (elements.queryInput?.value || '').trim();
+    
+    // Exibir SQL
+    if (elements.sqlCode && (data.effective_sql || data.sql)) {
+        elements.sqlCode.textContent = data.effective_sql || data.sql;
+        // Aplicar highlight se Prism estiver disponível
+        if (window.Prism) {
+            window.Prism.highlightElement(elements.sqlCode);
+        }
+    }
+    
+    // Exibir análise (render Markdown com segurança) e salvar cópia crua
+    if (elements.analysisContent && data.analysis) {
+        window.lastAnalysisRaw = data.analysis;
+        elements.analysisContent.innerHTML = formatAnalysis(data.analysis);
+        // Renderizar blocos dinâmicos (mermaid, charts, mapas)
+        renderDynamicBlocks(elements.analysisContent);
+    }
+    
+    // Mostrar resultado da consulta
+    if (elements.queryResult) {
+        elements.queryResult.style.display = 'block';
+    }
+    
+    // Exibir dados em tabela
+    if (data.data && data.data.length > 0) {
+        displayDataTable(data.data, data.record_count);
+    }
+    
+    // Gerar e embutir automaticamente a página HTML única
+    try {
+        if (data.query && data.analysis) {
+            console.log('Gerando HTML embutido para:', data.query);
+            generateAndEmbedBrandedHtml(data.query, data.analysis);
+        } else {
+            console.warn('Dados insuficientes para gerar HTML:', { query: data.query, analysis: data.analysis });
+        }
+    } catch (e) { console.warn('Falha ao gerar página HTML embutida:', e); }
+    
+    // Scroll para resultados
+    elements.resultsSection.scrollIntoView({ behavior: 'smooth' });
+}
+
+function displayDataTable(data, recordCount) {
+    if (!elements.tableHead || !elements.tableBody || !data.length) return;
+    
+    // Limpar tabela
+    elements.tableHead.innerHTML = '';
+    elements.tableBody.innerHTML = '';
+    
+    // Criar cabeçalho
+    const headerRow = document.createElement('tr');
+    Object.keys(data[0]).forEach(key => {
+        const th = document.createElement('th');
+        th.textContent = key;
+        headerRow.appendChild(th);
+    });
+    elements.tableHead.appendChild(headerRow);
+    
+    // Criar linhas de dados
+    const visibleRows = data.slice(0, 10);
+    visibleRows.forEach(row => {
+        const tr = document.createElement('tr');
+        Object.values(row).forEach(value => {
+            const td = document.createElement('td');
+            td.textContent = value !== null && value !== undefined ? value : '';
+            tr.appendChild(td);
+        });
+        elements.tableBody.appendChild(tr);
+    });
+    
+    // Atualizar contador
+    if (elements.recordCount) {
+        const total = recordCount || data.length;
+        const shown = Math.min(10, total);
+        elements.recordCount.textContent = `(mostrando ${shown} de ${total} registros)`;
+    }
+    
+    // Mostrar tabela
+    if (elements.dataTable) {
+        elements.dataTable.style.display = 'block';
+    }
+}
+
+async function handleFeatureAction(action) {
+    if (isLoading) return;
+    
+    // Validar ação
+    if (!action || action === 'null' || action === 'undefined') {
+        console.error('Ação inválida:', action);
+        showError('Ação inválida. Tente novamente.');
+        return;
+    }
+    
+    setLoading(true);
+    clearResults();
+    
+    try {
+        // Tentar múltiplos endpoints de API
+        const apiEndpoints = [`/api/${action}`, `/api/${action}`];
+        let response = null;
+        
+        for (const endpoint of apiEndpoints) {
+            try {
+                response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    break;
+                }
+            } catch (e) {
+                console.log(`Tentativa de API em ${endpoint} falhou:`, e.message);
+            }
+        }
+        
+        if (!response || !response.ok) {
+            throw new Error(`HTTP ${response?.status || 'N/A'}: ${response?.statusText || 'Nenhum endpoint de API respondeu'}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displayFeatureResults(action, data);
+        } else {
+            showError(data.error || 'Erro desconhecido na funcionalidade');
+        }
+        
+    } catch (error) {
+        console.error(`❌ Erro na funcionalidade ${action}:`, error);
+        showError(`Erro ao executar ${action}: ${error.message}`);
+    } finally {
+        setLoading(false);
+    }
+}
+
+function displayFeatureResults(action, data) {
+    if (!elements.resultsSection) return;
+    
+    elements.resultsSection.style.display = 'block';
+    
+    // Título baseado na ação
+    const titles = {
+        'stats': 'Estatísticas Gerais',
+        'health-score': 'Score de Saúde dos Veículos',
+        'tire-analysis': 'Análise de Pneus por Posição',
+        'alerts': 'Análise de Alertas'
+    };
+    
+    if (elements.displayedQuery) {
+        elements.displayedQuery.textContent = titles[action] || action;
+    }
+    
+    // Ocultar SQL e análise para funcionalidades
+    if (elements.queryResult) {
+        elements.queryResult.style.display = 'none';
+    }
+    
+    // Exibir dados específicos baseados na ação
+    let displayData = null;
+    
+    switch (action) {
+        case 'stats':
+            displayData = data.stats;
+            break;
+        case 'health-score':
+            displayData = data.health_scores;
+            break;
+        case 'tire-analysis':
+            displayData = data.tire_analysis;
+            break;
+        case 'alerts':
+            displayData = data.alerts;
+            break;
+    }
+    
+    if (displayData && Array.isArray(displayData) && displayData.length > 0) {
+        displayDataTable(displayData, displayData.length);
+    } else if (displayData && typeof displayData === 'object') {
+        // Converter objeto para array para exibição
+        const arrayData = Object.entries(displayData).map(([key, value]) => ({
+            'Métrica': key,
+            'Valor': value
+        }));
+        displayDataTable(arrayData, arrayData.length);
+    }
+    
+    elements.resultsSection.scrollIntoView({ behavior: 'smooth' });
+}
+
+function formatAnalysis(analysis) {
+    if (!analysis) return '';
+
+    // Implementação nativa de formatação Markdown
+    const escapeHtml = (s) => s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const formatMarkdown = (text) => {
+        let formatted = text;
+        
+        // **bold**
+        formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        
+        // *italic*
+        formatted = formatted.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+        
+        // ## Headers
+        formatted = formatted.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        formatted = formatted.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        formatted = formatted.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        
+        // Lists
+        formatted = formatted.replace(/^\- (.+)$/gm, '<li>$1</li>');
+        formatted = formatted.replace(/^(\d+)\. (.+)$/gm, '<li>$1. $2</li>');
+        
+        // Code blocks
+        formatted = formatted.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // Links
+        formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        
+        return formatted;
+    };
+
+    const html = analysis
+        .split('\n')
+        .map(line => {
+            const escaped = escapeHtml(line.trim());
+            const formatted = formatMarkdown(escaped);
+            return formatted;
+        })
+        .filter(Boolean)
+        .map(line => line.startsWith('<') ? line : `<p>${line}</p>`)
+        .join('');
+    
+    return `<div class="markdown-body">${html}</div>`;
+}
+
+// Função para carregar Google Maps
+function loadGoogleMaps(callback) {
+    if (typeof google !== 'undefined' && google.maps) {
+        callback();
+        return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyBjtmlvIJwGXYy6-0asHNR8LrJJp7Lbquo&libraries=places,geometry&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+        // Aguardar mais tempo para garantir que a API esteja disponível
+        setTimeout(() => {
+            // Verificar se a API está realmente carregada
+            if (typeof google !== 'undefined' && google.maps && google.maps.Map) {
+                callback();
+            } else {
+                console.log('Aguardando Google Maps API estar pronta...');
+                setTimeout(() => {
+                    if (typeof google !== 'undefined' && google.maps && google.maps.Map) {
+                        callback();
+                    } else {
+                        console.warn('Google Maps API não disponível após timeout, usando fallback');
+                        callback();
+                    }
+                }, 300);
+            }
+        }, 300);
+    };
+    script.onerror = () => {
+        console.warn('Falha ao carregar Google Maps, usando fallback SVG');
+        callback();
+    };
+    document.head.appendChild(script);
+}
+
+// Renderiza diagramas, gráficos e mapas usando implementação nativa
+function renderDynamicBlocks(container) {
+    if (!container) return;
+
+    // Gráficos nativos com Canvas
+    const chartBlocks = container.querySelectorAll('pre code.language-chart');
+    chartBlocks.forEach((block, index) => {
+        try {
+            const data = JSON.parse(block.textContent);
+            const canvas = document.createElement('canvas');
+            canvas.id = `chart-${Date.now()}-${index}`;
+            canvas.width = 400;
+            canvas.height = 200;
+            canvas.style.borderRadius = '8px';
+            canvas.style.border = '1px solid #22304A';
+            block.parentNode.replaceWith(canvas);
+            
+            drawNativeChart(canvas, data);
+        } catch (e) {
+            console.warn('Chart render error:', e);
+            block.parentNode.innerHTML = `<pre><code>Erro ao renderizar gráfico: ${e.message}</code></pre>`;
+        }
+    });
+
+    // Mapas Google Maps
+    const mapBlocks = container.querySelectorAll('pre code.language-map');
+    mapBlocks.forEach((block, index) => {
+        try {
+            const data = JSON.parse(block.textContent);
+            const mapDiv = document.createElement('div');
+            mapDiv.id = `map-${Date.now()}-${index}`;
+            mapDiv.style.height = '400px';
+            mapDiv.style.borderRadius = '8px';
+            mapDiv.style.border = '1px solid #22304A';
+            mapDiv.style.background = '#0F1929';
+            mapDiv.style.position = 'relative';
+            mapDiv.style.overflow = 'hidden';
+            block.parentNode.replaceWith(mapDiv);
+            
+            // Carregar Google Maps se não estiver disponível
+            if (typeof google === 'undefined' || !google.maps) {
+                loadGoogleMaps(() => {
+                    drawGoogleMap(mapDiv, data);
+                });
+            } else {
+                drawGoogleMap(mapDiv, data);
+            }
+        } catch (e) {
+            console.warn('Map render error:', e);
+            block.parentNode.innerHTML = `<pre><code>Erro ao renderizar mapa: ${e.message}</code></pre>`;
+        }
+    });
+}
+
+// Função para desenhar gráficos nativos com Canvas
+function drawNativeChart(canvas, data) {
+                const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Limpar canvas
+    ctx.fillStyle = '#0F1929';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Configurações
+    const padding = 40;
+    const chartWidth = width - 2 * padding;
+    const chartHeight = height - 2 * padding;
+    
+    // Cores
+    const colors = ['#13B9FF', '#00E5A9', '#FFB703', '#FF4D6D', '#8AB4FF'];
+    
+    if (data.type === 'line' && data.data && data.data.datasets) {
+        drawLineChart(ctx, data.data, padding, chartWidth, chartHeight, colors);
+    } else if (data.type === 'bar' && data.data && data.data.datasets) {
+        drawBarChart(ctx, data.data, padding, chartWidth, chartHeight, colors);
+    } else if (data.type === 'pie' && data.data && data.data.datasets) {
+        drawPieChart(ctx, data.data, width/2, height/2, Math.min(width, height)/2 - padding, colors);
+    } else {
+        // Gráfico simples de linha
+        drawSimpleLineChart(ctx, data, padding, chartWidth, chartHeight);
+    }
+}
+
+// Função para desenhar mapas com Google Maps
+function drawGoogleMap(container, data) {
+    // Verificar se o container existe e é válido
+    if (!container || !container.nodeType) {
+        console.error('Container inválido para o mapa:', container);
+        return;
+    }
+    
+    const center = data.center || { lat: -23.5505, lng: -46.6333 };
+    const zoom = data.zoom || 10;
+    const markers = data.markers || [];
+    
+    // Verificar se Google Maps está disponível
+    if (typeof google === 'undefined' || !google.maps) {
+        console.warn('Google Maps não disponível, usando fallback SVG');
+        drawNativeMapFallback(container, data);
+        return;
+    }
+    
+    // Configurações do mapa
+    const mapOptions = {
+        zoom: zoom,
+        center: center,
+        styles: [
+            {
+                featureType: 'all',
+                elementType: 'geometry',
+                stylers: [{ color: '#0F1929' }]
+            },
+            {
+                featureType: 'water',
+                elementType: 'geometry',
+                stylers: [{ color: '#1a2332' }]
+            },
+            {
+                featureType: 'road',
+                elementType: 'geometry',
+                stylers: [{ color: '#2d3748' }]
+            },
+            {
+                featureType: 'poi',
+                elementType: 'labels.text.fill',
+                stylers: [{ color: '#9FB2CC' }]
+            }
+        ],
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true,
+        zoomControl: true,
+        scaleControl: true
+    };
+    
+    try {
+        // Verificar se Google Maps está disponível
+        if (typeof google === 'undefined' || !google.maps || !google.maps.Map) {
+            console.warn('Google Maps API não está disponível, usando fallback SVG');
+            drawNativeMapFallback(container, data);
+            return;
+        }
+        
+        // Criar mapa
+        const map = new google.maps.Map(container, mapOptions);
+        
+        // Adicionar marcadores
+        markers.forEach((markerData, index) => {
+            const position = markerData.position || { lat: center.lat + (Math.random() - 0.5) * 0.1, lng: center.lng + (Math.random() - 0.5) * 0.1 };
+            const status = markerData.status || 'normal';
+            
+            // Criar ícone personalizado baseado no status
+            const icon = createCustomMapIcon(status);
+            
+            const marker = new google.maps.Marker({
+                position: position,
+                map: map,
+                icon: icon,
+                title: markerData.title || `Marcador ${index + 1}`,
+                animation: markerData.critical ? google.maps.Animation.BOUNCE : null
+            });
+            
+            // InfoWindow personalizada
+            if (markerData.popup) {
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div style="color: #E5EEFC; background: #0F1929; padding: 12px; border-radius: 8px; border: 1px solid #22304A;">
+                            <h4 style="margin: 0 0 8px 0; color: #13B9FF;">${markerData.title || 'Marcador'}</h4>
+                            <p style="margin: 0; font-size: 14px;">${markerData.popup}</p>
+                            <div style="margin-top: 8px; padding: 4px 8px; background: ${getStatusColor(status)}; border-radius: 4px; display: inline-block; font-size: 12px;">
+                                ${status.toUpperCase()}
+                            </div>
+                        </div>
+                    `
+                });
+                
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                });
+            }
+        });
+        
+        // Ajustar zoom para mostrar todos os marcadores
+        if (markers.length > 0) {
+            const bounds = new google.maps.LatLngBounds();
+            markers.forEach(markerData => {
+                if (markerData.position) {
+                    bounds.extend(markerData.position);
+                }
+            });
+            map.fitBounds(bounds);
+        }
+    } catch (error) {
+        console.error('Erro ao criar mapa do Google Maps:', error);
+        // Fallback para SVG nativo
+        drawNativeMapFallback(container, data);
+    }
+}
+
+// Função para criar ícones personalizados
+function createCustomMapIcon(status) {
+    const colors = {
+        'critical': '#FF4D6D',
+        'warning': '#FFB703',
+        'normal': '#22C55E',
+        'info': '#13B9FF'
+    };
+    
+    const color = colors[status] || colors['normal'];
+    
+    return {
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: color,
+        fillOpacity: 0.8,
+        strokeColor: '#E5EEFC',
+        strokeWeight: 2,
+        scale: 8
+    };
+}
+
+// Função para obter cor do status
+function getStatusColor(status) {
+    const colors = {
+        'critical': 'rgba(255, 77, 109, 0.2)',
+        'warning': 'rgba(255, 183, 3, 0.2)',
+        'normal': 'rgba(34, 197, 94, 0.2)',
+        'info': 'rgba(19, 185, 255, 0.2)'
+    };
+    
+    return colors[status] || colors['normal'];
+}
+
+// Fallback para SVG nativo
+function drawNativeMapFallback(container, data) {
+    const center = data.center || [0, 0];
+    const zoom = data.zoom || 2;
+    const markers = data.markers || [];
+    
+    // Criar SVG
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.style.background = '#0F1929';
+    
+    // Adicionar grid de fundo
+    for (let i = 0; i < 10; i++) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', '0');
+        line.setAttribute('y1', `${i * 10}%`);
+        line.setAttribute('x2', '100%');
+        line.setAttribute('y2', `${i * 10}%`);
+        line.setAttribute('stroke', '#22304A');
+        line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+    }
+    
+    for (let i = 0; i < 10; i++) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', `${i * 10}%`);
+        line.setAttribute('y1', '0');
+        line.setAttribute('x2', `${i * 10}%`);
+        line.setAttribute('y2', '100%');
+        line.setAttribute('stroke', '#22304A');
+        line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+    }
+    
+    // Adicionar marcadores
+    markers.forEach((marker, index) => {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const x = 50 + ((marker.position.lng - center[1]) * zoom); // longitude
+        const y = 50 - ((marker.position.lat - center[0]) * zoom); // latitude
+        
+        circle.setAttribute('cx', `${x}%`);
+        circle.setAttribute('cy', `${y}%`);
+        circle.setAttribute('r', '8');
+        circle.setAttribute('fill', '#13B9FF');
+        circle.setAttribute('stroke', '#E5EEFC');
+        circle.setAttribute('stroke-width', '2');
+        
+        // Tooltip
+        circle.addEventListener('mouseenter', () => {
+            const tooltip = document.createElement('div');
+            tooltip.textContent = marker.popup || `Marcador ${index + 1}`;
+            tooltip.style.position = 'absolute';
+            tooltip.style.background = '#0F1929';
+            tooltip.style.color = '#E5EEFC';
+            tooltip.style.padding = '8px';
+            tooltip.style.borderRadius = '4px';
+            tooltip.style.border = '1px solid #22304A';
+            tooltip.style.fontSize = '12px';
+            tooltip.style.pointerEvents = 'none';
+            tooltip.style.zIndex = '1000';
+            container.appendChild(tooltip);
+            
+            circle.tooltip = tooltip;
+        });
+        
+        circle.addEventListener('mouseleave', () => {
+            if (circle.tooltip) {
+                circle.tooltip.remove();
+                circle.tooltip = null;
+            }
+        });
+        
+        svg.appendChild(circle);
+    });
+    
+    container.appendChild(svg);
+}
+
+// Funções auxiliares para gráficos
+function drawLineChart(ctx, data, padding, width, height, colors) {
+    const labels = data.labels || [];
+    const datasets = data.datasets || [];
+    
+    if (labels.length === 0 || datasets.length === 0) return;
+    
+    // Eixos
+    ctx.strokeStyle = '#22304A';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, padding + height);
+    ctx.lineTo(padding + width, padding + height);
+    ctx.stroke();
+    
+    // Linhas dos dados
+    datasets.forEach((dataset, index) => {
+        if (!dataset.data || dataset.data.length === 0) return;
+        
+        ctx.strokeStyle = colors[index % colors.length];
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        dataset.data.forEach((value, i) => {
+            const x = padding + (i / (labels.length - 1)) * width;
+            const y = padding + height - (value / Math.max(...dataset.data)) * height;
+            
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        
+        ctx.stroke();
+    });
+}
+
+function drawBarChart(ctx, data, padding, width, height, colors) {
+    const labels = data.labels || [];
+    const datasets = data.datasets || [];
+    
+    if (labels.length === 0 || datasets.length === 0) return;
+    
+    const barWidth = width / labels.length * 0.8;
+    const barSpacing = width / labels.length * 0.2;
+    
+    datasets.forEach((dataset, datasetIndex) => {
+        if (!dataset.data || dataset.data.length === 0) return;
+        
+        ctx.fillStyle = colors[datasetIndex % colors.length];
+        
+        dataset.data.forEach((value, i) => {
+            const x = padding + i * (barWidth + barSpacing) + barSpacing / 2;
+            const barHeight = (value / Math.max(...dataset.data)) * height;
+            const y = padding + height - barHeight;
+            
+            ctx.fillRect(x, y, barWidth, barHeight);
+        });
+    });
+}
+
+function drawPieChart(ctx, data, centerX, centerY, radius, colors) {
+    const datasets = data.datasets || [];
+    if (datasets.length === 0) return;
+    
+    const dataset = datasets[0];
+    if (!dataset.data || dataset.data.length === 0) return;
+    
+    const total = dataset.data.reduce((sum, value) => sum + value, 0);
+    let currentAngle = 0;
+    
+    dataset.data.forEach((value, index) => {
+        const sliceAngle = (value / total) * 2 * Math.PI;
+        
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fill();
+        
+        currentAngle += sliceAngle;
+    });
+}
+
+function drawSimpleLineChart(ctx, data, padding, width, height) {
+    // Implementação simples para dados básicos
+    ctx.strokeStyle = '#13B9FF';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding + height);
+    ctx.lineTo(padding + width, padding);
+    ctx.stroke();
+    
+    // Adicionar texto
+    ctx.fillStyle = '#E5EEFC';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Gráfico de Dados', padding + width/2, padding + height/2);
+}
+
+
+function clearResults() {
+    if (elements.resultsSection) {
+        elements.resultsSection.style.display = 'none';
+    }
+    
+    if (elements.queryResult) {
+        elements.queryResult.style.display = 'none';
+    }
+    
+    if (elements.dataTable) {
+        elements.dataTable.style.display = 'none';
+    }
+    
+    // Limpar conteúdo
+    if (elements.displayedQuery) elements.displayedQuery.textContent = '';
+    if (elements.sqlCode) elements.sqlCode.textContent = '';
+    if (elements.analysisContent) elements.analysisContent.innerHTML = '';
+    if (elements.tableHead) elements.tableHead.innerHTML = '';
+    if (elements.tableBody) elements.tableBody.innerHTML = '';
+    if (elements.recordCount) elements.recordCount.textContent = '';
+
+    // Limpar bloco de HTML gerado e revogar URL
+    const block = document.getElementById('brandedHtmlBlock');
+    const frame = document.getElementById('brandedHtmlFrame');
+    if (block) block.style.display = 'none';
+    if (frame) { try { frame.removeAttribute('src'); } catch(_) {}; frame.srcdoc = ''; }
+    if (window.__brandedHtmlUrl) {
+        try { URL.revokeObjectURL(window.__brandedHtmlUrl); } catch (_) {}
+        window.__brandedHtmlUrl = null;
+    }
+}
+
+function showError(message) {
+    console.error('❌ Erro:', message);
+    
+    // Criar ou atualizar elemento de erro
+    let errorDiv = document.getElementById('errorMessage');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.id = 'errorMessage';
+        errorDiv.className = 'error-message glass-effect';
+        document.body.appendChild(errorDiv);
+    }
+    
+    errorDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" style="
+                background: none;
+                border: none;
+                color: white;
+                cursor: pointer;
+                margin-left: auto;
+                font-size: 16px;
+            ">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+        if (errorDiv && errorDiv.parentNode) {
+            errorDiv.remove();
+        }
+    }, 5000);
+}
+
+// Função utilitária para debug
+window.debugLLMAgent = function() {
+    console.log('🔍 Debug Info:', {
+        API_BASE,
+        isLoading,
+        elements: Object.keys(elements),
+        currentChart
+    });
+};
+
+console.log('✅ App.js inline carregado com sucesso');
+
+// Gera e embute a página HTML Schulz Tech (iframe + Blob URL)
+async function generateAndEmbedBrandedHtml(question, analysis) {
+    console.log('generateAndEmbedBrandedHtml chamada com:', { question, analysis });
+    
+    if (!question || !analysis) {
+        console.warn('Dados insuficientes para gerar HTML:', { question, analysis });
+        return;
+    }
+    
+    const block = document.getElementById('brandedHtmlBlock');
+    const frame = document.getElementById('brandedHtmlFrame');
+    if (!block || !frame) {
+        console.error('Elementos HTML não encontrados:', { block, frame });
+        return;
+    }
+
+    try {
+        console.log('Fazendo requisição para /api/generate-html...');
+        const apiEndpoints = ['/api/generate-html'];
+        let response = null;
+        for (const endpoint of apiEndpoints) {
+            try {
+                response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, analysis })
+                });
+                if (response.ok) break;
+            } catch (e) { console.log(`Falha em ${endpoint}:`, e.message); }
+        }
+        if (!response || !response.ok) {
+            throw new Error(`HTTP ${response?.status || 'N/A'}`);
+        }
+        const result = await response.json();
+        console.log('Resposta da API:', result);
+        if (!result.success || !result.html) {
+            throw new Error(result.error || 'Resposta inválida');
+        }
+
+        // Revogar URL anterior, se existir
+        if (window.__brandedHtmlUrl) {
+            try { URL.revokeObjectURL(window.__brandedHtmlUrl); } catch (_) {}
+            window.__brandedHtmlUrl = null;
+        }
+
+        const blob = new Blob([result.html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        window.__brandedHtmlUrl = url; // usado apenas para download
+        window.__brandedHtmlName = 'analise_schulz_tech.html';
+        
+        // Limpar iframe primeiro
+        try { 
+            frame.removeAttribute('src'); 
+            frame.srcdoc = '';
+        } catch (_) {}
+        
+        // Carregar conteúdo no iframe
+        setTimeout(() => {
+            try {
+                // Limpar iframe primeiro
+                frame.srcdoc = '';
+                frame.src = '';
+                
+                // Carregar novo conteúdo
+                setTimeout(() => {
+                    try {
+                        // Tentar carregar com srcdoc primeiro
+                        frame.srcdoc = result.html;
+                        console.log('HTML carregado no iframe com srcdoc');
+                        
+                        // Verificar se o conteúdo foi carregado após um tempo
+                        setTimeout(() => {
+                            try {
+                                if (frame.contentDocument && frame.contentDocument.body) {
+                                    const bodyContent = frame.contentDocument.body.innerHTML.trim();
+                                    if (bodyContent.length > 100) { // Conteúdo significativo
+                                        console.log('✅ Conteúdo carregado com sucesso no iframe');
+                                        return;
+                                    }
+                                }
+                                
+                                // Se não carregou bem, usar blob URL
+                                console.log('🔄 Usando fallback com blob URL para melhor compatibilidade');
+                                frame.src = url;
+                            } catch (e) {
+                                // Se não conseguir verificar, usar blob URL
+                                console.log('🔄 Fallback para blob URL devido a restrições de acesso');
+                                frame.src = url;
+                            }
+                        }, 500); // Reduzido para 500ms
+                    } catch (e) {
+                        console.error('Erro ao carregar HTML no iframe:', e);
+                        // Fallback: tentar usar src com blob URL
+                        try {
+                            frame.src = url;
+                        } catch (e2) {
+                            console.error('Erro no fallback do iframe:', e2);
+                        }
+                    }
+                }, 100);
+            } catch (e) {
+                console.error('Erro ao limpar iframe:', e);
+            }
+        }, 50);
+        
+        block.style.display = 'block';
+    } catch (e) {
+        console.error('Falha ao embutir HTML:', e);
+        showError(`Falha ao gerar página HTML: ${e.message}`);
+    }
+}
+
+// Função para download do HTML
+function handleDownloadHtml() {
+    try {
+        if (!window.__brandedHtmlUrl) {
+            showError('Nenhum HTML gerado para download.');
+            return;
+        }
+        const a = document.createElement('a');
+        a.href = window.__brandedHtmlUrl;
+        a.download = window.__brandedHtmlName || 'analise.html';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (e) {
+        console.error('Erro no download do HTML:', e);
+        showError(`Erro ao baixar HTML: ${e.message}`);
+    }
+}
+
+// Função para inicializar Google Maps
+function initGoogleMap() {
+    loadGoogleMaps(function() {
+        const mapDiv = document.getElementById('map1');
+        if (mapDiv && typeof google !== 'undefined' && google.maps) {
+            const data = {
+                center: { lat: -23.5505, lng: -46.6333 },
+                zoom: 10,
+                markers: [
+                    { position: { lat: -23.5505, lng: -46.6333 }, title: 'Schulz Tech', popup: 'Schulz Tech' },
+                    { position: { lat: -23.5505, lng: -46.6333 }, title: 'Schulz Tech', popup: 'Schulz Tech' }
+                ]
+            };
+            drawGoogleMap(mapDiv, data);
+        } else {
+            console.error('Google Maps não está disponível ou elemento map1 não encontrado.');
+        }
+    });
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Função para inicializar gráficos usando Chart.js
+function initCharts() {
+    const ctx = document.getElementById('chart1').getContext('2d');
+    const myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+            datasets: [{
+                label: '# of Votes',
+                data: [12, 19, 3, 5, 2, 3],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)',
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+    </script>
+</body>
+</html>
