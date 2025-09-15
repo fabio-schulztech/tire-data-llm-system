@@ -4,7 +4,7 @@ Aplicação Flask simplificada para teste do sistema TPMS com IA
 """
 
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from flask_cors import CORS
 from datetime import datetime
 import json
@@ -60,6 +60,7 @@ def index():
             
             <button onclick="askQuestion()">Perguntar</button>
             <button onclick="generateHTML()" style="background: #27ae60; margin-left: 10px;">Gerar Relatório HTML</button>
+            <button onclick="downloadCSV()" style="background: #e67e22; margin-left: 10px;">📊 Download CSV</button>
             
             <div id="result" class="result" style="display: none;"></div>
             <div id="htmlResult" class="result" style="display: none;"></div>
@@ -168,6 +169,56 @@ def index():
                     const newWindow = window.open('', '_blank');
                     newWindow.document.write(window.generatedHTML);
                     newWindow.document.close();
+                }
+            }
+            
+            async function downloadCSV() {
+                const query = document.getElementById('query').value;
+                
+                if (!query.trim()) {
+                    alert('Por favor, digite uma pergunta primeiro');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/download-csv', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ query: query })
+                    });
+                    
+                    if (response.ok) {
+                        // Obter o nome do arquivo do header Content-Disposition
+                        const contentDisposition = response.headers.get('Content-Disposition');
+                        let filename = 'consulta_tpms.csv';
+                        if (contentDisposition) {
+                            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                            if (filenameMatch) {
+                                filename = filenameMatch[1];
+                            }
+                        }
+                        
+                        // Criar blob e fazer download
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        
+                        console.log('✅ CSV baixado com sucesso');
+                    } else {
+                        const errorData = await response.json();
+                        alert(`❌ Erro ao baixar CSV: ${errorData.error || 'Erro desconhecido'}`);
+                    }
+                } catch (error) {
+                    console.error('❌ Erro de conexão:', error);
+                    alert(`❌ Erro de conexão: ${error.message}`);
                 }
             }
         </script>
@@ -279,6 +330,94 @@ def api_generate_html():
         return jsonify({
             'success': False,
             'error': f'Erro ao gerar HTML: {str(e)}'
+        }), 500
+
+@app.route('/api/download-csv', methods=['POST'])
+def api_download_csv():
+    """Endpoint para download de CSV com dados da consulta"""
+    try:
+        if not llm_agent:
+            return jsonify({
+                'success': False,
+                'error': 'Agente LLM não está disponível'
+            }), 500
+        
+        payload = request.get_json() or {}
+        query = payload.get('query', '').strip()
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'Query não fornecida'
+            }), 400
+        
+        print(f"📊 Gerando CSV para consulta: {query}")
+        
+        # Executar a consulta SQL diretamente
+        result = llm_agent.query(query)
+        
+        # Verificar se houve erro na consulta
+        if 'error' in result:
+            return jsonify({
+                'success': False,
+                'error': f'Erro na consulta SQL: {result["error"]}'
+            }), 500
+        
+        raw_data = result.get('raw_data', [])
+        columns = result.get('columns', [])
+        
+        if not raw_data:
+            return jsonify({
+                'success': False,
+                'error': 'Nenhum dado encontrado para exportar'
+            }), 400
+        
+        # Gerar CSV
+        import csv
+        import io
+        from datetime import datetime
+        
+        # Criar buffer de memória para o CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Escrever cabeçalho
+        if columns:
+            writer.writerow(columns)
+        else:
+            # Se não há colunas definidas, usar as chaves do primeiro registro
+            writer.writerow(raw_data[0].keys() if raw_data else [])
+        
+        # Escrever dados
+        for row in raw_data:
+            if isinstance(row, dict):
+                writer.writerow(row.values())
+            else:
+                writer.writerow(row)
+        
+        # Obter conteúdo do CSV
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Criar nome do arquivo com timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"consulta_tpms_{timestamp}.csv"
+        
+        # Criar resposta com CSV
+        return Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"',
+                'Content-Type': 'text/csv; charset=utf-8'
+            }
+        )
+        
+    except Exception as e:
+        print(f"❌ Erro no /api/download-csv: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Erro interno: {str(e)}'
         }), 500
 
 if __name__ == '__main__':

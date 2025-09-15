@@ -80,6 +80,9 @@ class TireDataLLMAgent:
         Returns:
             str: Consulta SQL gerada
         """
+        # Verificar se o usuário solicitou resposta completa (SEM LIMITES)
+        is_unlimited_query = "SEM LIMITES" in user_question.upper()
+        
         # Obter colunas reais da tabela
         real_columns = list(self.database_schema["tire_data_json_llm"]["columns"].keys())
         columns_list = ", ".join(real_columns)
@@ -106,7 +109,7 @@ class TireDataLLMAgent:
         
         1. Utilize apenas a tabela e as colunas listadas no esquema acima.
         2. Gere consultas PostgreSQL válidas que respondam à pergunta do usuário.
-        3. Inclua a cláusula ``LIMIT`` para restringir o número de registros retornados (mínimo {self.min_result_limit} e máximo {self.result_limit} por padrão).
+        {"3. NÃO inclua cláusula LIMIT - o usuário solicitou resposta completa (SEM LIMITES)." if is_unlimited_query else f"3. Inclua a cláusula ``LIMIT`` para restringir o número de registros retornados (mínimo {self.min_result_limit} e máximo {self.result_limit} por padrão)."}
         4. IMPORTANTE: Use apenas as colunas reais da tabela: {real_columns}
         5. Se a consulta for muito específica (ex: pneu específico, veículo específico), primeiro verifique se existem dados antes de fazer agregações.
         6. Para análises estatísticas, use funções agregadas como COUNT, AVG, MIN, MAX e STDDEV.
@@ -156,12 +159,13 @@ class TireDataLLMAgent:
         except Exception as e:
             raise Exception(f"Erro ao gerar consulta SQL: {e}")
     
-    def execute_query(self, sql_query):
+    def execute_query(self, sql_query, is_unlimited=False):
         """
         Executa a consulta SQL no banco de dados.
         
         Args:
             sql_query (str): Consulta SQL para executar
+            is_unlimited (bool): Se True, não aplica limites de resultados
             
         Returns:
             tuple: (dados, colunas) - dados dos resultados e nomes das colunas
@@ -180,28 +184,31 @@ class TireDataLLMAgent:
             sql_norm = re.sub(r"\bpressao\b", "pressure", sql_norm, flags=re.IGNORECASE)
             sql_norm = re.sub(r"\blongitude\b", "longtitude", sql_norm, flags=re.IGNORECASE)
 
-            # Se possuir LIMIT, reduzir para o teto quando necessário; caso contrário, aplicar LIMIT padrão
-            m = re.search(r"\blimit\s+(\d+)\b", sql_norm, re.IGNORECASE)
-            if m:
-                try:
-                    current_limit = int(m.group(1))
-                except Exception:
-                    current_limit = None
-                desired_limit = current_limit if current_limit is not None else self.result_limit
-                if desired_limit < self.min_result_limit:
-                    desired_limit = self.min_result_limit
-                if desired_limit > self.result_limit:
-                    desired_limit = self.result_limit
-                # substituir pelo limite desejado (mantém no range [min,max])
-                sql_effective = re.sub(r"\blimit\s+\d+\b", f"LIMIT {desired_limit}", sql_norm, flags=re.IGNORECASE)
+            # Se for consulta sem limites, não aplicar LIMIT
+            if is_unlimited:
+                sql_effective = sql_norm
+                print(f"🔧 SQL efetiva (SEM LIMITES): {sql_effective}")
             else:
-                # encapsular e aplicar limite máximo
-                sql_effective = f"SELECT * FROM ({sql_norm}) AS subq LIMIT {self.result_limit}"
-            self.last_effective_sql = sql_effective
-            try:
+                # Se possuir LIMIT, reduzir para o teto quando necessário; caso contrário, aplicar LIMIT padrão
+                m = re.search(r"\blimit\s+(\d+)\b", sql_norm, re.IGNORECASE)
+                if m:
+                    try:
+                        current_limit = int(m.group(1))
+                    except Exception:
+                        current_limit = None
+                    desired_limit = current_limit if current_limit is not None else self.result_limit
+                    if desired_limit < self.min_result_limit:
+                        desired_limit = self.min_result_limit
+                    if desired_limit > self.result_limit:
+                        desired_limit = self.result_limit
+                    # substituir pelo limite desejado (mantém no range [min,max])
+                    sql_effective = re.sub(r"\blimit\s+\d+\b", f"LIMIT {desired_limit}", sql_norm, flags=re.IGNORECASE)
+                else:
+                    # encapsular e aplicar limite máximo
+                    sql_effective = f"SELECT * FROM ({sql_norm}) AS subq LIMIT {self.result_limit}"
                 print(f"🔧 SQL efetiva (LIMIT aplicado): {sql_effective}")
-            except Exception:
-                pass
+            
+            self.last_effective_sql = sql_effective
             cursor.execute(sql_effective)
             data = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
@@ -304,42 +311,7 @@ class TireDataLLMAgent:
         19. baseado nas mudanças de estado da variavel movimento, calcule o percentual de utilização do veiculo.
         """
 
-        analysis_prompt_tail = """
-        
-        FORMATO VISUAL (quando aplicável):
-        - Use blocos de código com cercas (```), NUNCA HTML.
-        - Diagramas (Mermaid):
-          ```mermaid
-          graph TD; A[Sensor]-->B((Pneu)); B-->C{Alerta?}; C-->|Sim|D[Acionar manutenção]; C-->|Não|E[Monitorar]
-          ```
-        - Gráficos (Chart.js) com JSON:
-          ```chart
-          {
-            "type": "line",
-            "data": {
-              "labels": ["2025-01-01","2025-01-02"],
-              "datasets": [{
-                "label": "Pressão (PSI)",
-                "data": [118, 115],
-                "borderColor": "#60A5FA",
-                "backgroundColor": "rgba(96,165,250,0.2)"
-              }]
-            },
-            "options": {"interaction": {"mode": "index", "intersect": false}}
-          }
-          ```
-        - Mapas (Leaflet) com JSON:
-          ```map
-          {
-            "center": [-23.55, -46.63],
-            "zoom": 10,
-            "markers": [
-              {"lat": -23.55, "lng": -46.63, "popup": "Placa ABC-1234 - 120 PSI - 75°C"}
-            ]
-          }
-          ```
-        - Use **negrito** para destaques e *itálico* para insights.
-        """
+        analysis_prompt_tail = """ """
 
         analysis_prompt = analysis_prompt_head + analysis_prompt_tail
         
@@ -369,6 +341,11 @@ class TireDataLLMAgent:
         try:
             print(f"🤖 Processando pergunta: {user_question}")
             
+            # Verificar se é consulta sem limites
+            is_unlimited = "SEM LIMITES" in user_question.upper()
+            if is_unlimited:
+                print("🚀 Modo SEM LIMITES ativado - retornando todos os resultados")
+            
             # 1. Gerar consulta SQL
             print("📝 Gerando consulta SQL...")
             sql_query = self.generate_sql_query(user_question)
@@ -376,7 +353,7 @@ class TireDataLLMAgent:
             
             # 2. Executar consulta
             print("🔍 Executando consulta no banco de dados...")
-            data, columns = self.execute_query(sql_query)
+            data, columns = self.execute_query(sql_query, is_unlimited=is_unlimited)
             
             # 2.1. Se não há dados, tentar consulta mais ampla
             if not data or len(data) == 0:
@@ -393,7 +370,7 @@ class TireDataLLMAgent:
                 """
                 
                 try:
-                    fallback_data, fallback_columns = self.execute_query(fallback_sql)
+                    fallback_data, fallback_columns = self.execute_query(fallback_sql, is_unlimited=False)
                     
                     if fallback_data and len(fallback_data) > 0:
                         # Existem dados, mas não para os critérios específicos
@@ -450,7 +427,7 @@ class TireDataLLMAgent:
                 "columns": columns,
                 "formatted_results": formatted_results,
                 "analysis": analysis,
-                "raw_data": data[:10000]  # Limitar dados brutos (alvo mínimo de 10k)
+                "raw_data": data  # Limitar dados brutos (alvo mínimo de 10k)
             }
 
             
@@ -493,7 +470,7 @@ DADOS DISPONÍVEIS PARA VISUALIZAÇÃO:
             google_maps_key = os.getenv('GOOGLE_MAPS_API_KEY', 'YOUR_API_KEY')
             
             prompt = f"""
-Você é um especialista em desenvolvimento web, design e visualização de dados. Crie um RELATÓRIO PREMIUM HTML completo e visualmente incrível para exibir uma análise detalhada de dados de um sistema TPMS (Tire Pressure Monitoring System).
+Você é um especialista em desenvolvimento web, design e visualização de dados. Crie uma página HTML de arquivo único (CSS e JS embutidos) para transformar o texto anexado em um relatório executivo analítico premium da Schulz Tech.
 
 INFORMAÇÕES PARA EXIBIR:
 - Pergunta: {question}
@@ -503,13 +480,51 @@ INFORMAÇÕES PARA EXIBIR:
 
 CHAVE DA API GOOGLE MAPS: {google_maps_key}
 
-OBJETIVO: Criar um RELATÓRIO PREMIUM que seja:
-- Visualmente impressionante e profissional
-- Dinâmico e interativo (não apenas cards estáticos)
-- Detalhado com máximo de informações possíveis
-- RICO EM INSIGHTS extraídos da análise do GPT
-- Destacando todos os conteúdos importantes
-- Usando markdown para formatação rica
+ESPECIFICAÇÕES OBRIGATÓRIAS:
+
+**Design & Branding:**
+- Identidade visual corporativa da Schulz Tech (cores azul/branco, tipografia moderna)
+- Layout escuro, premium, com gradientes, sombras e micro-interações
+- Design responsivo para desktop e mobile
+- Cores corporativas: azul (#2c3e50, #3498db), branco (#ffffff), cinza (#7f8c8d, #95a5a6)
+- Gradientes sofisticados e sombras profundas
+- Animações CSS avançadas (fade-in, slide-up, pulse, glow)
+- Efeitos de hover e transições suaves
+
+**Estrutura do Relatório:**
+1. **Sumário executivo destacado no topo** - KPIs principais em cards visuais
+2. **Dashboard com KPIs principais** - Métricas de performance em cards visuais
+3. **Mapa interativo** - Mostrando rotas e localizações do veículo
+4. **Central de alertas** - Eventos críticos destacados com cores semafóricas
+5. **Seções organizadas**:
+   - Operacional (dados de telemetria, performance)
+   - Financeira (custos, economia, ROI)
+   - Técnica (alertas, manutenção, status)
+   - Recomendações (ações sugeridas)
+6. **Gráficos interativos** - Dos dados de telemetria com Chart.js
+7. **Conclusões e próximos passos** - Resumo executivo e ações
+
+**Funcionalidades Técnicas:**
+- Mapa com marcadores das posições GPS registradas
+- Sistema de alertas visuais (cores, ícones, badges piscantes)
+- Timeline de eventos importantes
+- Visualizações de dados com Canvas/SVG
+- Animações suaves de entrada e hover
+- Barras de progresso e indicadores visuais
+- Tabelas responsivas para dados detalhados
+
+**Alertas & Eventos:**
+- Alertas críticos (temperatura >80°C, pressão fora do ideal)
+- Eventos operacionais (paradas, mudanças de rota)
+- Indicadores de risco com cores semafóricas
+- Notificações em tempo real simuladas
+- Histórico de alertas organizados por prioridade
+
+**Tom & Conteúdo:**
+- Linguagem executiva e estratégica
+- Foco em insights de negócio e ROI
+- Recomendações acionáveis
+- Métricas de performance destacadas
 
 INSTRUÇÕES CRÍTICAS PARA INSIGHTS:
 
@@ -662,18 +677,25 @@ IMPORTANTE:
 - EXTRAIA E DESTAQUE TODOS OS INSIGHTS DA ANÁLISE FORNECIDA
 - Crie visualizações específicas para cada insight importante
 - Transforme a análise em um relatório visual rico e informativo
+- Foque em linguagem executiva e estratégica
+- Destaque métricas de performance e ROI
+- Crie recomendações acionáveis
+- Implemente design escuro premium da Schulz Tech
+- Use cores semafóricas para alertas (verde/amarelo/vermelho)
+- Crie micro-interações e animações suaves
+- Foque em insights de negócio e tom executivo
 
 Gere apenas o HTML completo, sem explicações adicionais.
 """
 
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-nano",
                 messages=[
                     {"role": "system", "content": "Você é um especialista em desenvolvimento web, design e visualização de dados, especializado em criar interfaces elegantes e profissionais para sistemas de dados com gráficos e mapas interativos."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=6000,
-                temperature=0.7
+                # max_tokens=6000,
+                # temperature=0.7
             )
             
             html_content = response.choices[0].message.content.strip()
