@@ -247,38 +247,75 @@ class TireDataLLMAgent:
         
         return result
     
-    def analyze_with_llm(self, data, columns, original_question):
+    def generate_csv_content(self, data, columns):
         """
-        Usa o LLM para analisar e interpretar os resultados.
+        Gera conteúdo CSV a partir dos dados e colunas.
         
         Args:
             data: Dados retornados da consulta
             columns: Nomes das colunas
+            
+        Returns:
+            str: Conteúdo do CSV
+        """
+        if not data:
+            return ""
+        
+        import csv
+        import io
+        
+        # Criar buffer de memória para o CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Escrever cabeçalho
+        if columns:
+            writer.writerow(columns)
+        else:
+            # Se não há colunas definidas, usar as chaves do primeiro registro
+            writer.writerow(data[0].keys() if data else [])
+        
+        # Escrever dados
+        for row in data:
+            if isinstance(row, dict):
+                writer.writerow(row.values())
+            else:
+                writer.writerow(row)
+        
+        # Obter conteúdo do CSV
+        csv_content = output.getvalue()
+        output.close()
+        
+        return csv_content
+    
+    def analyze_with_llm(self, csv_content, original_question):
+        """
+        Usa o LLM para analisar e interpretar os resultados baseado no conteúdo CSV.
+        
+        Args:
+            csv_content: Conteúdo do arquivo CSV gerado
             original_question: Pergunta original do usuário
             
         Returns:
             str: Análise interpretativa dos dados
         """
-        if not data:
+        if not csv_content or csv_content.strip() == "":
             return "⚠️ Não há dados para analisar. A consulta foi executada com sucesso, mas não retornou resultados. Verifique se os critérios da consulta estão corretos ou tente uma pergunta mais ampla."
         
-        # Limitar dados para análise (primeiros 100 registros)
-        sample_data = data[:5000] if len(data) > 5000 else data
+        # Contar linhas do CSV (excluindo cabeçalho)
+        csv_lines = csv_content.strip().split('\n')
+        total_records = len(csv_lines) - 1 if len(csv_lines) > 1 else 0
         
-        # Preparar dados para o LLM
-        df_sample = pd.DataFrame(sample_data, columns=columns)
-        data_summary = df_sample.describe(include='all').to_string()
+        # Preparar dados para o LLM (primeiras 20 linhas para análise)
+        sample_csv = '\n'.join(csv_lines[:21])  # Cabeçalho + 20 registros
         
         analysis_prompt_head = f"""
-        Analise os seguintes dados estatísticos sobre pneus e GPS, respondendo à pergunta original do usuário.
+        Analise os seguintes dados CSV sobre pneus e GPS, respondendo à pergunta original do usuário.
         
         PERGUNTA ORIGINAL: {original_question}
 
-        DADOS ENCONTRADOS ({len(data)} registros total):
-        {df_sample.to_string(index=False, max_rows=20)}
-
-        ESTATÍSTICAS DESCRITIVAS:
-        {data_summary}
+        DADOS CSV ENCONTRADOS ({total_records} registros total):
+        {sample_csv}
 
         INFORMAÇÕES DE CONTEXTO:
         - Caso o usuario não informe, o custo de um pneu: 2450 R$ por unidade.
@@ -287,28 +324,28 @@ class TireDataLLMAgent:
         - Vida útil nominal de um pneu: 200000 km.
         - Caso o usuario não informe, a Pressão ideal é 120 PSI, (subpressões elevadas reduzem a vida útil do pneu).
         - Temperaturas acima de 80 °C representam risco e podem aumentar o desgaste e o consumo.
-         - É comum usar cpk (custo por kilometro) como referencia
+        - É comum usar cpk (custo por kilometro) como referencia
 
         INSTRUÇÕES:
-        1. Forneça uma análise clara, sucinta e objetiva dos dados.
+        1. Forneça uma análise clara, sucinta e objetiva dos dados CSV.
         2. Destaque insights importantes e padrões encontrados. Use Markdown.
         3. Responda diretamente à pergunta do usuário.
-        4. Use linguagem técnica porem acessível, a resposta sera lida pelo gestor e pelo motorista da frota.
+        4. Use linguagem técnica porém acessível, a resposta será lida pelo gestor e pelo motorista da frota.
         5. Mencione limitações ou observações importantes.
         6. Se aplicável, inclua a simulação de desgaste para estimar custos e economias associadas a pressões ou temperaturas fora do ideal.
-        7. exiba os dados completos do pneu quando for o caso, a posição, a pressão e a temperatura, localização geografica do evento, veiculo a qual o pneu pertence, timestamp do evento, distancia percorrida
-        8. sempre que possivel calcule o desgaste prematuro de cada pneu
-        9. compare as condições dos pneus com os parâmetros de referência
-        10. se aplicavel exiba graficos comparativos entre as variaveis envolvidas nos calculos
-        11. o chat com o usuario é encerrado a cada consulta, não ofereca continuidade
-        12. em caso de pneu com alerta, calcule a duração deste alerta em tempo e distancia percorrida
-        13. Ajuste o layout do texto de resposta para ficar de fail visualização
-        14. separe o texto da resposta em blocos, por exemplo, se estiver respondendo sobre 3 veiculos serão 3 blocos de texto com uma linha vazia entre eles
-        15. use negrito nas respostas onde for necessario para separar assuntos
-        16. o texto dos insights sempre devem ser em italico
-        17. não chame APIs externas; caso precise de mapas, gere apenas dados (coordenadas) no formato solicitado abaixo.
-        18. se possivel, indique as condições climaticas do local com base nos dados disponíveis (sem acessar APIs externas).
-        19. baseado nas mudanças de estado da variavel movimento, calcule o percentual de utilização do veiculo.
+        7. Exiba os dados completos do pneu quando for o caso, a posição, a pressão e a temperatura, localização geográfica do evento, veículo a qual o pneu pertence, timestamp do evento, distância percorrida
+        8. Sempre que possível calcule o desgaste prematuro de cada pneu
+        9. Compare as condições dos pneus com os parâmetros de referência
+        10. Se aplicável exiba gráficos comparativos entre as variáveis envolvidas nos cálculos
+        11. O chat com o usuário é encerrado a cada consulta, não ofereça continuidade
+        12. Em caso de pneu com alerta, calcule a duração deste alerta em tempo e distância percorrida
+        13. Ajuste o layout do texto de resposta para ficar de fácil visualização
+        14. Separe o texto da resposta em blocos, por exemplo, se estiver respondendo sobre 3 veículos serão 3 blocos de texto com uma linha vazia entre eles
+        15. Use negrito nas respostas onde for necessário para separar assuntos
+        16. O texto dos insights sempre devem ser em itálico
+        17. Não chame APIs externas; caso precise de mapas, gere apenas dados (coordenadas) no formato solicitado abaixo.
+        18. Se possível, indique as condições climáticas do local com base nos dados disponíveis (sem acessar APIs externas).
+        19. Baseado nas mudanças de estado da variável movimento, calcule o percentual de utilização do veículo.
         """
 
         analysis_prompt_tail = """ """
@@ -415,9 +452,13 @@ class TireDataLLMAgent:
             # 3. Formatar resultados
             formatted_results = self.format_results(data, columns)
             
-            # 4. Analisar com LLM
-            print("🧠 Analisando resultados...")
-            analysis = self.analyze_with_llm(data, columns, user_question)
+            # 4. Gerar CSV para análise
+            print("📊 Gerando CSV para análise...")
+            csv_content = self.generate_csv_content(data, columns)
+            
+            # 5. Analisar com LLM baseado no CSV
+            print("🧠 Analisando resultados baseado no CSV...")
+            analysis = self.analyze_with_llm(csv_content, user_question)
             
             return {
                 "question": user_question,
